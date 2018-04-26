@@ -6,19 +6,19 @@ import java.io.Serializable;
 
 public class CategoryRequest implements Serializable {
 
-    private String                  categoryName;
-    private ClientInterface clientInterface;
+    private String categoryName;
+    private String clientEmail;
 
-    public CategoryRequest ( String categoryName, ClientInterface clientInterface) {
+    public CategoryRequest ( String categoryName, String clientEmail ) {
         this.categoryName = categoryName;
-        this.clientInterface = clientInterface;
+        this.clientEmail = clientEmail;
     }
 
     public String getCategoryName() {
         return categoryName;
     }
 
-    public ClientInterface getClientInterface() {
-        return clientInterface;
+    public String getClientEmail() {
+        return clientEmail;
     }
 }

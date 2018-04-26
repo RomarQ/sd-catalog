@@ -95,13 +95,22 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
     /**
      * This method generates a new unique id
      *
-     * @param currentId Id holder
+     * @param idType can be categoryId [1] or clientId [2]
      * @return
      *          int - generated id
      */
-    private int generateId( Integer currentId ) {
-        currentId = new Integer( currentId.intValue()+1 );
-        return currentId.intValue();
+    private synchronized int generateUniqueId( int idType ) {
+
+        if ( idType == 1) {
+            currentCategoryId = new Integer(currentCategoryId.intValue() + 1);
+            return currentCategoryId.intValue();
+        }
+        else if ( idType == 2 ) {
+            currentClientId = new Integer(currentClientId.intValue() + 1);
+            return currentClientId.intValue();
+        }
+
+        return -1;
     }
 
     /**
@@ -117,9 +126,10 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
 
         // Synchronized segment since we are generating unique ID's for clients
         synchronized ( currentClientId ) {
+            int id =  generateUniqueId( 2 );
             clients.add(
                 new User(
-                    generateId(currentClientId),
+                    id,
                     email,
                     ip,
                     port,
@@ -412,13 +422,13 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
 
     /**
      * Adds a Category request to the pending requests for the purpose of notifying the client when that category has sellers.
-     * @param subscription Remote object to be called back when category is available
+     * @param email Email of the client that requested the category
      * @param categoryName Category name of the category requested
      * @return
      *          ResponseTypes.CATEGORY_REQUEST_REJECTED if category already has sellers,
      *          ResponseTypes.CATEGORY_REQUEST_ACCEPTED that means request was successful
      */
-    public synchronized ResponseTypes addCategoryRequest( ClientInterface subscription , String categoryName ) {
+    public synchronized ResponseTypes addCategoryRequest( String email , String categoryName ) {
 
         Category category = null ;
 
@@ -426,12 +436,12 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
 
             // Verifies the request has already been made, if yes then reject this new request
             for ( CategoryRequest cr : categoryRequests ) {
-                if (cr.getCategoryName().equalsIgnoreCase(categoryName) && cr.getClientInterface() == subscription)
+                if (cr.getCategoryName().equalsIgnoreCase(categoryName) && cr.getClientEmail().equalsIgnoreCase(email))
                     return ResponseTypes.CATEGORY_REQUEST_REJECTED;
             }
             // Gets the Category object if there is a category with the same name as the category requested
             for ( Category c : categories )
-                if ( c.getCategoryName()  == categoryName )
+                if ( c.getCategoryName().equalsIgnoreCase(categoryName) )
                     category = c;
 
             // If category exists, verifies if category has already sellers
@@ -441,7 +451,7 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
                         return ResponseTypes.CATEGORY_REQUEST_REJECTED;
 
             // Add request since at this point we know that category or doesn't exist yet or has no sellers
-            categoryRequests.add(new CategoryRequest( categoryName , subscription ));
+            categoryRequests.add(new CategoryRequest( categoryName , email ));
             saveCategoryRequests();
 
         }
@@ -454,15 +464,18 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
 
     /**
      * Notifies the client that requested a category that is now available
-     * @param subscription Remote object to be called back when category is available
+     * @param email Email of the client that requested the category
      * @param categoryName Category name of the category requested
      * @return a String saying that category is now available.
      */
-    private synchronized void notifyClient(ClientInterface subscription , String categoryName ) {
+    private synchronized void notifyClient(  String email , String categoryName ) {
 
         try {
 
-            subscription.notifyClient( ANSI_GREEN + " Category " + categoryName + " is available! "+ ANSI_RESET );
+            ClientInterface ci = getClientInterface( email );
+
+            if ( ci != null )
+                ci.notifyClient( ANSI_GREEN + " Category " + categoryName + " is available! "+ ANSI_RESET );
 
         } catch ( RemoteException e ) {
             System.err.println("Client not listening!");
@@ -470,13 +483,26 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
 
     }
 
+    public ClientInterface getClientInterface( String email ) {
+
+        for ( User u : clients )
+            if ( u.getEmail().equalsIgnoreCase(email) )
+                return u.getClientInterface();
+
+        return null;
+    }
+
+    /**
+     * Verifies which users requested a category and notifies them
+     * @param categoryName
+     */
     private void verifyCategoryRequests( String categoryName ) {
 
         ArrayList<CategoryRequest> requestsToRemove = new ArrayList<>();
 
         for (CategoryRequest cr : categoryRequests)
             if (cr.getCategoryName().equalsIgnoreCase(categoryName)) {
-                notifyClient( cr.getClientInterface() , categoryName );
+                notifyClient( cr.getClientEmail() , categoryName );
                 requestsToRemove.add(cr);
             }
 
@@ -492,9 +518,13 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
         Category category = getCategory( categoryName );
         if( category == null ) {
             // Category doesn't exits, so lets add it
-            category = new Category( generateId( currentCategoryId ) , categoryName );
-            categories.add( category );
-
+            synchronized ( currentCategoryId ){
+                synchronized ( categories ) {
+                    int id = generateUniqueId(1);
+                    category = new Category(id, categoryName);
+                    categories.add(category);
+                }
+            }
             synchronized ( categoryRequests ) {
                 // Checks if any user requested this category, and notify them if so
                 verifyCategoryRequests( categoryName );

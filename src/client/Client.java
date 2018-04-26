@@ -101,7 +101,7 @@ public class Client {
             Naming.rebind( "CategoryRequest" , clientInfo );
 
             ResponseTypes response =
-                    catalog.addCategoryRequest( clientInfo , categoryName );
+                    catalog.addCategoryRequest( clientInfo.getEmail() , categoryName );
 
             if ( response == ResponseTypes.CATEGORY_REQUEST_ACCEPTED )
                 System.out.print("\n\nCategory request was registered, you will be notified once it is available!\n\n");
@@ -394,7 +394,7 @@ public class Client {
             int i = 1;
             for (File f : files)
                 if (f.isFile())
-                    System.out.print("\nId: " + i + " - Client: " + f.getName());
+                    System.out.print("\nId: " + i++ + " - Client: " + f.getName());
 
             System.out.print("\n\nId: ");
             i = Integer.parseInt(input.readLine());
