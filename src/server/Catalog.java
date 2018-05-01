@@ -44,6 +44,8 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
 
         // List with all category requests from clients
         private ArrayList<CategoryRequest> categoryRequests = getCategoryRequestsData();
+        // Used when category requested is available but client was offline and couldn't be notified
+        private ArrayList<CategoryRequest> pendingCategoryRequests = new ArrayList<CategoryRequest>();
 
     // ----------------------------------------------
     // END
@@ -68,24 +70,22 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
         return false;
     }
 
+
     /**
+     * Updates Client RMI instance when he re-connects to the server
      *
+     * @param subscription
+     * @param email
+     * @param ip
+     * @return
      */
-    public synchronized User authenticateUser ( String ip , String email ) {
+    public synchronized ResponseTypes updateSubscription( ClientInterface subscription , String email , String ip ) {
+
         for ( User user : clients )
             if ( user.getEmail().equalsIgnoreCase( email ) ) {
+                user.updateClientInterface(subscription);
                 user.updateIp(ip);
-                return user;
-            }
-
-        return null;
-    }
-
-    public synchronized ResponseTypes updateSubscription( ClientInterface subscription , String email ) {
-
-        for ( User u : clients )
-            if ( u.getEmail().equalsIgnoreCase( email ) ) {
-                u.updateClientInterface(subscription);
+                verifyCategoryRequestsByUser( user );
                 return ResponseTypes.SUBSCRIPTION_ACCEPTED;
             }
 
@@ -137,6 +137,7 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
                 )
             );
 
+            System.out.print(ANSI_GREEN + "\n\nNew Client: " + email + "\n\n" + ANSI_RESET);
             saveClients();
         }
     }
@@ -468,7 +469,7 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
      * @param categoryName Category name of the category requested
      * @return a String saying that category is now available.
      */
-    private synchronized void notifyClient(  String email , String categoryName ) {
+    private synchronized boolean notifyClient(  String email , String categoryName ) {
 
         try {
 
@@ -477,8 +478,11 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
             if ( ci != null )
                 ci.notifyClient( ANSI_GREEN + " Category " + categoryName + " is available! "+ ANSI_RESET );
 
+            return true;
+
         } catch ( RemoteException e ) {
             System.err.println("Client not listening!");
+            return false;
         }
 
     }
@@ -493,16 +497,38 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
     }
 
     /**
+     * Verifies which categories requested are now available and notifies the user
+     *
+     * @param user
+     */
+    private void verifyCategoryRequestsByUser( User user ) {
+
+        ArrayList<CategoryRequest> requestsToRemove = new ArrayList<>();
+
+        for ( CategoryRequest cr : pendingCategoryRequests )
+            if (cr.getClientEmail().equalsIgnoreCase(user.getEmail())) {
+                if ( notifyClient( cr.getClientEmail() , cr.getCategoryName() ) ) {
+                    requestsToRemove.add(cr);
+                }
+            }
+
+        pendingCategoryRequests.removeAll(requestsToRemove);
+    }
+
+    /**
      * Verifies which users requested a category and notifies them
+     *
      * @param categoryName
      */
-    private void verifyCategoryRequests( String categoryName ) {
+    private void verifyCategoryRequestsByCategory( String categoryName ) {
 
         ArrayList<CategoryRequest> requestsToRemove = new ArrayList<>();
 
         for (CategoryRequest cr : categoryRequests)
             if (cr.getCategoryName().equalsIgnoreCase(categoryName)) {
-                notifyClient( cr.getClientEmail() , categoryName );
+                if ( !notifyClient( cr.getClientEmail() , categoryName ) ) {
+                    pendingCategoryRequests.add(new CategoryRequest( cr.getCategoryName() , cr.getClientEmail() ));
+                }
                 requestsToRemove.add(cr);
             }
 
@@ -527,7 +553,7 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
             }
             synchronized ( categoryRequests ) {
                 // Checks if any user requested this category, and notify them if so
-                verifyCategoryRequests( categoryName );
+                verifyCategoryRequestsByCategory( categoryName );
             }
         }
 

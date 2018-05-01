@@ -1,21 +1,36 @@
 package server;
 
 
-public class server {
+import java.rmi.AlreadyBoundException;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 
-    static int default_port = 3100;
+// -Djava.security.policy==src/server/permissions.policy
+
+public class server {
 
     public static void main(String [] args) {
 
+        // Sets permission from policy file
+        System.setSecurityManager(new SecurityManager());
 
-        /**
-         * Tries to start the server socket on default_port
-         * @server_socket instance of ServerSocket that will allow clients to connect to the server
-         * @default_port  port where server socket will be listening to all connections
-         */
+        try {
 
-        ServerThread server = new ServerThread( default_port );
-        server.startServer();
+            // Catalog will be a remote object
+            Catalog catalog = new Catalog();
+
+            // Bind the remote object's stub in the registry
+            Registry registry = LocateRegistry.createRegistry(1099);
+            registry.bind("Catalog", catalog );
+
+            System.out.println("# Catalog is now available for Remote Access!");
+
+        } catch ( RemoteException e ) {
+            e.printStackTrace();
+        } catch ( AlreadyBoundException e ) {
+            e.printStackTrace();
+        }
 
         while ( true );
 

@@ -1,8 +1,8 @@
-grant{
+grant {
     // allows anyone to listen on un-privileged ports
     permission java.net.SocketPermission "*:1024-65535", "listen,accept,connect,resolve";
 
     // allows read and write operations on storage files
-    permission java.io.FilePermission "src/server/storage", "read,write";
-    permission java.io.FilePermission "src/server/storage/*", "read,write";
+    permission java.io.FilePermission "src/client/storage", "read,write";
+    permission java.io.FilePermission "src/client/storage/*", "read,write";
 };

@@ -27,7 +27,7 @@ public class Connection extends Thread {
     public void run() {
 
         String clientAddress = socket.getRemoteSocketAddress().toString();
-        System.out.print("\n\nClient " + clientAddress + " just connected with you!\n\n");
+        System.out.print("\n\nClient " + clientAddress + " just connected with you!\n");
 
         try (
             ObjectInputStream   ois = new ObjectInputStream( socket.getInputStream() );
@@ -44,10 +44,12 @@ public class Connection extends Thread {
 
                     case PRODUCTS_REQUEST           :   oos.writeObject(clientInfo.getProducts());
                                                         oos.flush();
+                                                        System.out.print("\nAsked for a list of your products.");
                                                         break;
 
                     case CONTACT_REQUEST            :   oos.writeObject("Email: " + clientInfo.getEmail() + ", Phone: " + clientInfo.getPhone() );
                                                         oos.flush();
+                                                        System.out.print("\nRequested your contact.");
                                                         break;
 
                     case CATEGORY_REQUEST_UPDATE    :   System.out.print(ois.readObject());

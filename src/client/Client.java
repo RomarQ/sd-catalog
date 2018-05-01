@@ -15,16 +15,12 @@ import java.util.regex.Pattern;
 
 import static shared.helper.getIp;
 
+// -Djava.security.policy==src/client/permissions.policy
+
 public class Client {
 
-    private static String   server;
-    static {
-        try {
-            server = getIp();
-        } catch (SocketException e) {
-            e.printStackTrace();
-        }
-    }
+    private static String server = config.serverAddress;
+
 
     // RMI
     static Registry         registry;
@@ -98,8 +94,6 @@ public class Client {
 
             String categoryName = input.readLine();
 
-            Naming.rebind( "CategoryRequest" , clientInfo );
-
             ResponseTypes response =
                     catalog.addCategoryRequest( clientInfo.getEmail() , categoryName );
 
@@ -133,6 +127,8 @@ public class Client {
 
                 if (sellers.size() == 0)
                     System.out.println("This Category doesn't have Sellers for now!");
+                else if (sellers.size() == 1 && sellers.get(0).getEmail().equalsIgnoreCase(clientInfo.getEmail()))
+                    System.out.println("This Category only has a seller and is you!");
                 else {
                     System.out.print(
                             " _______________________________________\n" +
@@ -142,8 +138,9 @@ public class Client {
                             "|---------------------------------------\n"
                     );
 
-                    for (User seller : catalog.getCategorySellers(categoryId)) {
-                        System.out.print("| " + ++sellerId + "    | " + seller.getIp() + "    | " + seller.getPort() + "\n");
+                    for (User seller : sellers) {
+                        if ( !seller.getEmail().equalsIgnoreCase(clientInfo.getEmail()))
+                            System.out.print("| " + ++sellerId + "    | " + seller.getIp() + "    | " + seller.getPort() + "\n");
                     }
 
                     System.out.print("|_______________________________________\n");
@@ -196,9 +193,9 @@ public class Client {
 
 
         } catch ( ConnectException e ) {
-            System.out.print("\n\nSeller is Offline, Try again later. \n\n");
+            System.out.print("\n\nSeller is offline, Try again later. \n\n");
         } catch ( IOException e ) {
-            e.printStackTrace();
+            System.out.print("\n\nSeller went offline, Try again later. \n\n");
         } catch ( ClassNotFoundException e ) {
             e.printStackTrace();
         }
@@ -348,11 +345,13 @@ public class Client {
 
         try {
 
+
             registry = LocateRegistry.getRegistry(server);
             catalog = (CatalogRemote) registry.lookup("Catalog");
 
         } catch ( Exception e) {
             System.out.print("\n\nServer is not responding or RMI service is offline...\n");
+            e.printStackTrace();
         }
     }
 
@@ -408,13 +407,11 @@ public class Client {
 
             clientInfo = (ClientInfo) ois.readObject();
 
-            ResponseTypes response =
-                catalog.updateSubscription( clientInfo , clientInfo.getEmail() );
 
             ois.close();
             fis.close();
 
-            return response == ResponseTypes.SUBSCRIPTION_ACCEPTED ? true : false;
+            return subscribeToCatalog() == ResponseTypes.SUBSCRIPTION_ACCEPTED ? true : false;
 
         } catch ( Exception e ) {
             e.printStackTrace();
@@ -422,6 +419,7 @@ public class Client {
 
         return false;
     }
+
 
     private static boolean signup() {
 
@@ -438,7 +436,7 @@ public class Client {
             String email = input.readLine();
 
             while ( !mailFormat.matcher(email).matches() || catalog.userExists(email) ) {
-                System.out.print("\nEmail is invalid, Try again! :(\n\n");
+                System.out.print("\nEmail is invalid or already exists, Try again! :(\n\n");
                 System.out.print("Insert your email\n");
                 email = input.readLine();
             }
@@ -480,13 +478,36 @@ public class Client {
 
             System.out.print("\n\n" + email + " you are now registered!\n\n");
 
-            return true;
+            return subscribeToCatalog() == ResponseTypes.SUBSCRIPTION_ACCEPTED ? true : false;
 
         } catch ( IOException e ) {
             e.printStackTrace();
         }
 
         return false;
+    }
+
+
+    /**
+     * Subscribes to catalog sending a client interface and the email of the client.
+     * If already subscribed, then just updates the proxy of the client interface.
+     *
+     * @return
+     *          ResponseTypes.SUBSCRIPTION_ACCEPTED
+     *          ResponseTypes.SUBSCRIPTION_REJECTED
+     */
+    private static ResponseTypes subscribeToCatalog() {
+
+        try {
+
+            Naming.rebind("subscription", clientInfo);
+            return catalog.updateSubscription(clientInfo, clientInfo.getEmail() , getIp() );
+
+        } catch ( Exception e ) {
+            e.printStackTrace();
+        }
+
+        return ResponseTypes.SUBSCRIPTION_REJECTED;
     }
 
     private static void saveClientFile() {
@@ -503,6 +524,8 @@ public class Client {
     }
 
     public static void main( String [] args ) {
+
+        System.setSecurityManager(new SecurityManager());
 
         // Connects to RMI Server "Catalog"
         connectToCatalog();

@@ -1,7 +1,5 @@
 package server;
 
-import shared.ClientInterface;
-
 import java.io.Serializable;
 
 public class CategoryRequest implements Serializable {
