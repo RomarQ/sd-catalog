@@ -5,6 +5,7 @@ import shared.*;
 import java.io.*;
 import java.net.Socket;
 import java.net.SocketException;
+import java.rmi.AlreadyBoundException;
 import java.rmi.ConnectException;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
@@ -319,7 +320,7 @@ public class Client {
 
         ArrayList<Product> products = clientInfo.getProducts();
 
-        // shows a menu list with all products, their category and prices
+        // Shows a menu list with all products, their category and prices
         listProducts( products , true );
 
         if ( products.size() > 0 ) {
@@ -344,7 +345,6 @@ public class Client {
     private static void connectToCatalog() {
 
         try {
-
 
             registry = LocateRegistry.getRegistry(server);
             catalog = (CatalogRemote) registry.lookup("Catalog");
@@ -500,11 +500,17 @@ public class Client {
 
         try {
 
-            Naming.rebind("subscription", clientInfo);
-            return catalog.updateSubscription(clientInfo, clientInfo.getEmail() , getIp() );
+            registry = LocateRegistry.createRegistry(config.RMIClientPort);
+            registry.bind("subscription", clientInfo);
 
-        } catch ( Exception e ) {
+            return catalog.updateSubscription( clientInfo , clientInfo.getEmail() , getIp() );
+
+        } catch ( SocketException e ) {
             e.printStackTrace();
+        } catch ( RemoteException e ) {
+            e.printStackTrace();
+        } catch ( AlreadyBoundException e ) {
+            System.err.print("Registry port " + config.RMIClientPort + " already in use!");
         }
 
         return ResponseTypes.SUBSCRIPTION_REJECTED;

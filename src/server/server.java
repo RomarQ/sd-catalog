@@ -1,6 +1,8 @@
 package server;
 
 
+import shared.config;
+
 import java.rmi.AlreadyBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -21,7 +23,7 @@ public class server {
             Catalog catalog = new Catalog();
 
             // Bind the remote object's stub in the registry
-            Registry registry = LocateRegistry.createRegistry(1099);
+            Registry registry = LocateRegistry.createRegistry(config.RMIServerPort);
             registry.bind("Catalog", catalog );
 
             System.out.println("# Catalog is now available for Remote Access!");
@@ -29,7 +31,7 @@ public class server {
         } catch ( RemoteException e ) {
             e.printStackTrace();
         } catch ( AlreadyBoundException e ) {
-            e.printStackTrace();
+            System.err.print("Registry port " + config.RMIServerPort + " already in use!");
         }
 
         while ( true );
