@@ -124,15 +124,18 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
         // Synchronized segment since we are generating unique ID's for clients
         synchronized ( currentClientId ) {
             int id =  generateUniqueId( 2 );
-            clients.add(
-                new User(
-                    id,
-                    email,
-                    ip,
-                    port,
-                    clientInterface
-                )
-            );
+
+            synchronized ( clients ) {
+                clients.add(
+                        new User(
+                                id,
+                                email,
+                                ip,
+                                port,
+                                clientInterface
+                        )
+                );
+            }
 
             System.out.print(ANSI_GREEN + "\n\nNew Client: " + email + "\n\n" + ANSI_RESET);
             saveClients();
@@ -412,7 +415,7 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
                 if ( cs.getCategoryId() == category.getId() )
                     return ResponseTypes.CATEGORY_REQUEST_REJECTED;
 
-            // Add request since at this point we know that category or doesn't exist yet or has no sellers
+        // Add request since at this point we know that category or doesn't exist yet or has no sellers
         synchronized (categoryRequests) {
             categoryRequests.add(new CategoryRequest( categoryName , email ));
         }
@@ -429,7 +432,7 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
      * @param categoryName Category name of the category requested
      * @return a String saying that category is now available.
      */
-    private synchronized boolean notifyClient(  String email , String categoryName ) {
+    private boolean notifyClient(  String email , String categoryName ) {
 
         try {
 
@@ -514,23 +517,26 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
         if( category == null ) {
             // Category doesn't exits, so lets add it
             synchronized ( currentCategoryId ){
+
+                int id = generateUniqueId(1);
+
                 synchronized ( categories ) {
-                    int id = generateUniqueId(1);
                     category = new Category(id, categoryName);
                     categories.add(category);
                 }
             }
-            synchronized ( categoryRequests ) {
-                // Checks if any user requested this category, and notify them if so
-                verifyCategoryRequestsByCategory( categoryName );
-            }
+
+            // Checks if any user requested this category, and notify them if so
+            verifyCategoryRequestsByCategory( categoryName );
         }
 
         // Verifying if seller is already selling this category
         CategorySeller categorySeller = getCategorySeller( seller.getId() , category.getId() );
         if( categorySeller == null )
             // Seller doesn't sell this category, so lets add it
-            categorySellers.add( new CategorySeller( seller.getId() , category.getId() ) );
+            synchronized ( categorySellers ) {
+                categorySellers.add(new CategorySeller(seller.getId(), category.getId()));
+            }
 
         // Save new data into file
         saveCategories();

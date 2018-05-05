@@ -3,10 +3,8 @@ package client;
 import shared.*;
 
 import java.io.*;
-import java.net.BindException;
 import java.net.Socket;
 import java.net.SocketException;
-import java.rmi.AlreadyBoundException;
 import java.rmi.ConnectException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -16,7 +14,6 @@ import java.util.regex.Pattern;
 
 import static shared.helper.getIp;
 
-// -Djava.security.policy==src/client/permissions.policy
 
 public class Client {
 

@@ -86,15 +86,6 @@ public class ClientInfo extends UnicastRemoteObject implements ClientInterface, 
         return port;
     }
 
-    public Product getProduct( String productName , String category ) {
-
-        for ( Product p : products )
-            if ( p.getName().equalsIgnoreCase(productName) && p.getCategory().equalsIgnoreCase(category) )
-                return new Product( p.getId() , p.getName() , p.getCategory() , p.getPrice() );
-
-        return null;
-    }
-
 
     public void addProduct( Product product ) {
         products.add( product );
