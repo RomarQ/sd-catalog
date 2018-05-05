@@ -30,5 +30,5 @@ Distributed system that simulates a Product Store via RMI services and client co
 > **3.** If you are using linux make sure that your **/etc/hosts** is properly configured
 - Should look something like this:
 	```
-	127.0.0.1       	localhost  
+	127.0.0.1           localhost  
 	yourServerAddress   YourPC
