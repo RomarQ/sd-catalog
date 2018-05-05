@@ -1,8 +1,6 @@
 package server;
 
 import shared.*;
-import client.Product;
-
 import java.io.*;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
@@ -121,8 +119,7 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
      * @param port
      * @param clientInterface   Proxy that will allow catalog to answer callbacks coming from client
      */
-    public synchronized void
-        createUser ( String email , String ip , int port , ClientInterface clientInterface ) {
+    public void createUser ( String email , String ip , int port , ClientInterface clientInterface ) {
 
         // Synchronized segment since we are generating unique ID's for clients
         synchronized ( currentClientId ) {
@@ -147,7 +144,7 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
      * @return
      *          ArrayList<User>
      */
-    public synchronized ArrayList<User> getClientsData() {
+    public ArrayList<User> getClientsData() {
 
         try (
             FileInputStream fis = new FileInputStream(new File("src/server/storage/clients.ser"));
@@ -274,36 +271,6 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
         return new ArrayList<>();
     }
 
-    public synchronized boolean saveToFile() {
-
-        try (
-            FileOutputStream fosClients =
-                    new FileOutputStream( new File("src/server/storage/clients.ser"));
-            FileOutputStream fosCategories =
-                    new FileOutputStream( new File("src/server/storage/categories.ser"));
-            FileOutputStream fosCategorySellers =
-                    new FileOutputStream( new File("src/server/storage/categorySellers.ser"));
-            FileOutputStream fosCategoryRequests =
-                    new FileOutputStream( new File("src/server/storage/categoryRequests.ser"));
-
-            ObjectOutputStream oosClients          = new ObjectOutputStream( fosClients            );
-            ObjectOutputStream oosCategories       = new ObjectOutputStream( fosCategories         );
-            ObjectOutputStream oosCategorySellers  = new ObjectOutputStream( fosCategorySellers    );
-            ObjectOutputStream oosCategoryRequests = new ObjectOutputStream( fosCategoryRequests   )
-        ) {
-
-            oosClients.writeObject          (clients          );
-            oosCategories.writeObject       (categories       );
-            oosCategorySellers.writeObject  (categorySellers  );
-            oosCategoryRequests.writeObject (categoryRequests  );
-
-        } catch ( IOException e ) {
-            e.printStackTrace();
-            return false;
-        }
-
-        return true;
-    }
 
     /**
      * Saves Clients info in two object files, clients.ser and currentClientId.ser.
@@ -315,14 +282,13 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
     public synchronized boolean saveClients() {
 
         try (
-                FileOutputStream fos =
-                        new FileOutputStream( new File("src/server/storage/clients.ser"));
-                FileOutputStream fosIds =
-                        new FileOutputStream( new File("src/server/storage/currentClientId.ser"));
+            FileOutputStream fos =
+                    new FileOutputStream( new File("src/server/storage/clients.ser"));
+            FileOutputStream fosIds =
+                    new FileOutputStream( new File("src/server/storage/currentClientId.ser"));
 
-                ObjectOutputStream oos    = new ObjectOutputStream( fos    );
-                ObjectOutputStream oosIds = new ObjectOutputStream( fosIds )
-
+            ObjectOutputStream oos    = new ObjectOutputStream( fos    );
+            ObjectOutputStream oosIds = new ObjectOutputStream( fosIds )
         ) {
 
             oos.writeObject     ( clients         );
@@ -346,14 +312,13 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
     public synchronized boolean saveCategories() {
 
         try (
-                FileOutputStream fos =
-                        new FileOutputStream( new File("src/server/storage/categories.ser"));
-                FileOutputStream fosIds =
-                        new FileOutputStream( new File("src/server/storage/currentCategoryId.ser"));
+            FileOutputStream fos =
+                    new FileOutputStream( new File("src/server/storage/categories.ser"));
+            FileOutputStream fosIds =
+                    new FileOutputStream( new File("src/server/storage/currentCategoryId.ser"));
 
-                ObjectOutputStream oos    = new ObjectOutputStream( fos    );
-                ObjectOutputStream oosIds = new ObjectOutputStream( fosIds )
-
+            ObjectOutputStream oos    = new ObjectOutputStream( fos    );
+            ObjectOutputStream oosIds = new ObjectOutputStream( fosIds )
         ) {
 
             oos.writeObject     ( categories         );
@@ -377,11 +342,10 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
     public synchronized boolean saveCategorySellers() {
 
         try (
-                FileOutputStream fos =
-                        new FileOutputStream( new File("src/server/storage/categorySellers.ser"));
+            FileOutputStream fos =
+                    new FileOutputStream( new File("src/server/storage/categorySellers.ser"));
 
-                ObjectOutputStream oos = new ObjectOutputStream( fos )
-
+            ObjectOutputStream oos = new ObjectOutputStream( fos )
         ) {
 
             oos.writeObject ( categorySellers );
@@ -404,11 +368,10 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
     public synchronized boolean saveCategoryRequests() {
 
         try (
-                FileOutputStream fos =
-                        new FileOutputStream( new File("src/server/storage/categoryRequests.ser"));
+            FileOutputStream fos =
+                    new FileOutputStream( new File("src/server/storage/categoryRequests.ser"));
 
-                ObjectOutputStream oos = new ObjectOutputStream( fos )
-
+            ObjectOutputStream oos = new ObjectOutputStream( fos )
         ) {
 
             oos.writeObject ( categoryRequests );
@@ -429,36 +392,33 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
      *          ResponseTypes.CATEGORY_REQUEST_REJECTED if category already has sellers,
      *          ResponseTypes.CATEGORY_REQUEST_ACCEPTED that means request was successful
      */
-    public synchronized ResponseTypes addCategoryRequest( String email , String categoryName ) {
+    public ResponseTypes addCategoryRequest( String email , String categoryName ) {
 
         Category category = null ;
 
-        synchronized (categoryRequests) {
+        // Verifies the request has already been made, if yes then reject this new request
+        for ( CategoryRequest cr : categoryRequests ) {
+            if (cr.getCategoryName().equalsIgnoreCase(categoryName) && cr.getClientEmail().equalsIgnoreCase(email))
+                return ResponseTypes.CATEGORY_REQUEST_REJECTED;
+        }
+        // Gets the Category object if there is a category with the same name as the category requested
+        for ( Category c : categories )
+            if ( c.getCategoryName().equalsIgnoreCase(categoryName) )
+                category = c;
 
-            // Verifies the request has already been made, if yes then reject this new request
-            for ( CategoryRequest cr : categoryRequests ) {
-                if (cr.getCategoryName().equalsIgnoreCase(categoryName) && cr.getClientEmail().equalsIgnoreCase(email))
+        // If category exists, verifies if category has already sellers
+        if ( category != null )
+            for ( CategorySeller cs : categorySellers )
+                if ( cs.getCategoryId() == category.getId() )
                     return ResponseTypes.CATEGORY_REQUEST_REJECTED;
-            }
-            // Gets the Category object if there is a category with the same name as the category requested
-            for ( Category c : categories )
-                if ( c.getCategoryName().equalsIgnoreCase(categoryName) )
-                    category = c;
-
-            // If category exists, verifies if category has already sellers
-            if ( category != null )
-                for ( CategorySeller cs : categorySellers )
-                    if ( cs.getCategoryId() == category.getId() )
-                        return ResponseTypes.CATEGORY_REQUEST_REJECTED;
 
             // Add request since at this point we know that category or doesn't exist yet or has no sellers
+        synchronized (categoryRequests) {
             categoryRequests.add(new CategoryRequest( categoryName , email ));
-            saveCategoryRequests();
-
         }
 
         // Save new data into file
-        saveToFile();
+        saveCategoryRequests();
 
         return ResponseTypes.CATEGORY_REQUEST_ACCEPTED;
     }
@@ -512,7 +472,9 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
                 }
             }
 
-        pendingCategoryRequests.removeAll(requestsToRemove);
+        synchronized (pendingCategoryRequests) {
+            pendingCategoryRequests.removeAll(requestsToRemove);
+        }
     }
 
     /**
@@ -532,9 +494,16 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
                 requestsToRemove.add(cr);
             }
 
-        categoryRequests.removeAll(requestsToRemove);
+        synchronized (categoryRequests) {
+            categoryRequests.removeAll(requestsToRemove);
+        }
     }
 
+    /**
+     * Makes a relation between a seller and a category, if category doesn't exist then also adds a new category
+     * @param email
+     * @param categoryName
+     */
     public synchronized void addCategorySeller( String email , String categoryName ) {
 
         // Get seller data
@@ -591,6 +560,22 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
         }
 
         // return null if doesn't exist
+        return null;
+    }
+
+    /**
+     * Looks for a category with categoryId and returns its name
+     * @param categoryId
+     * @return
+     *          String CategoryName
+     *          NULL if category doesn't exist
+     */
+    public String getCategoryName( int categoryId ) {
+
+        for ( Category c : categories )
+            if ( c.getId() == categoryId )
+                return c.getCategoryName();
+
         return null;
     }
 

@@ -30,7 +30,30 @@ public class ClientInfo extends UnicastRemoteObject implements ClientInterface, 
         this.ip     = getIp();
     }
 
-    public ArrayList<Product> getProducts() {
+    /**
+     * Gets products of a given category
+     * @param categoryName
+     * @return
+     *          ArrayList<Product> products
+     */
+    public ArrayList<Product> getProductsByCategoryName( String categoryName ) {
+
+        ArrayList<Product> clone = new ArrayList<>();
+
+        for ( Product p : products )
+            if ( p.getCategory().equalsIgnoreCase(categoryName))
+                clone.add( new Product( p.getId() , p.getName() , p.getCategory() , p.getPrice() ) );
+
+        return clone;
+
+    }
+
+    /**
+     * Gets all products on client store
+     * @return
+     *          ArrayList<Product> products
+     */
+    public ArrayList<Product> getAllProducts() {
 
         ArrayList<Product> clone = new ArrayList<>();
 
@@ -70,10 +93,6 @@ public class ClientInfo extends UnicastRemoteObject implements ClientInterface, 
                 return new Product( p.getId() , p.getName() , p.getCategory() , p.getPrice() );
 
         return null;
-    }
-
-    public void setIp() throws SocketException {
-        this.ip = getIp();
     }
 
 

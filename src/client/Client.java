@@ -3,11 +3,11 @@ package client;
 import shared.*;
 
 import java.io.*;
+import java.net.BindException;
 import java.net.Socket;
 import java.net.SocketException;
 import java.rmi.AlreadyBoundException;
 import java.rmi.ConnectException;
-import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -29,6 +29,9 @@ public class Client {
 
     public static ClientInfo clientInfo;
 
+    /**
+     * Lists all categories registered on Catalog
+     */
     public static void listCategories() {
 
         try {
@@ -85,6 +88,10 @@ public class Client {
         }
     }
 
+    /**
+     * Prompts a dialog to request a category that doesn't currently exists, also registers a callback
+     * to notify user when category becomes available
+     */
     public static void requestCategory () {
 
         BufferedReader input = new BufferedReader( new InputStreamReader( System.in ));
@@ -112,58 +119,69 @@ public class Client {
 
     }
 
+    /**
+     * Asks user to select a category Id and then a sellerId to start a connection
+     * via socket with the seller [Client -> Seller](Both Clients)
+     */
     public static void selectCategory() {
 
-            try {
+        // refresh connection - Needed if server reconnected during client session
+        connectToCatalog();
 
-                BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
+        try {
 
-                System.out.print("Insert category ID\n");
-                int categoryId = Integer.parseInt(input.readLine());
+            BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
 
-                ArrayList<User> sellers = catalog.getCategorySellers(categoryId);
+            System.out.print("Insert category ID\n");
+            int categoryId = Integer.parseInt(input.readLine());
 
-                // sellerId is used to Identify a seller on the menu below
-                int sellerId = 0;
+            ArrayList<User> sellers = catalog.getCategorySellers(categoryId);
 
-                if (sellers.size() == 0)
-                    System.out.println("This Category doesn't have Sellers for now!");
-                else if (sellers.size() == 1 && sellers.get(0).getEmail().equalsIgnoreCase(clientInfo.getEmail()))
-                    System.out.println("This Category only has a seller and is you!");
-                else {
-                    System.out.print(
-                            " _______________________________________\n" +
-                            "|  Sellers                              \n" +
-                            "|---------------------------------------\n" +
-                            "| Id   | Ip                | Port       \n" +
-                            "|---------------------------------------\n"
-                    );
+            // sellerId is used to Identify a seller on the menu below
+            int sellerId = 0;
 
-                    for (User seller : sellers) {
-                        if ( !seller.getEmail().equalsIgnoreCase(clientInfo.getEmail()))
-                            System.out.print("| " + ++sellerId + "    | " + seller.getIp() + "    | " + seller.getPort() + "\n");
-                    }
+            if (sellers.size() == 0)
+                System.out.println("This Category doesn't have Sellers for now!");
+            else if (sellers.size() == 1 && sellers.get(0).getEmail().equalsIgnoreCase(clientInfo.getEmail()))
+                System.out.println("This Category only has a seller and is you!");
+            else {
+                System.out.print(
+                        " _______________________________________\n" +
+                        "|  Sellers                              \n" +
+                        "|---------------------------------------\n" +
+                        "| Id   | Ip                | Port       \n" +
+                        "|---------------------------------------\n"
+                );
 
-                    System.out.print("|_______________________________________\n");
-
-                    System.out.print("Insert Seller ID to verify his products\n");
-                    sellerId = Integer.parseInt(input.readLine());
-
-                    sellerId--;
-                    if (sellerId >= 0 && sellerId < sellers.size())
-                        connectToSeller(sellers.get(sellerId));
-                    else
-                        System.out.print("\nSeller ID invalid, Try again :(\n");
-
+                for (User seller : sellers) {
+                    if ( !seller.getEmail().equalsIgnoreCase(clientInfo.getEmail()))
+                        System.out.print("| " + ++sellerId + "    | " + seller.getIp() + "    | " + seller.getPort() + "\n");
                 }
-            } catch (EOFException e) {
-                System.out.print("Input invalid, Try again :(\n");
-            } catch (IOException e) {
-                e.printStackTrace();
+
+                System.out.print("|_______________________________________\n");
+
+                System.out.print("Insert Seller ID to verify his products\n");
+                sellerId = Integer.parseInt(input.readLine());
+
+                sellerId--;
+                if (sellerId >= 0 && sellerId < sellers.size())
+                    connectToSeller( sellers.get(sellerId) , categoryId );
+                else
+                    System.out.print("\nSeller ID invalid, Try again :(\n");
+
             }
+        } catch (EOFException e) {
+            System.out.print("Input invalid, Try again :(\n");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    public static void connectToSeller( User seller ) {
+    /**
+     * Connect to seller via socket to get his products list by category and also to ask for a contact
+     * @param seller
+     */
+    public static void connectToSeller( User seller , int categoryId ) {
 
         BufferedReader input = new BufferedReader ( new InputStreamReader( System.in ) );
 
@@ -172,10 +190,15 @@ public class Client {
                 ObjectOutputStream oos = new ObjectOutputStream( socket.getOutputStream() );
                 ObjectInputStream ois = new ObjectInputStream( socket.getInputStream() )
         ) {
+            String categoryName = catalog.getCategoryName(categoryId);
+
             // Waiting for CONNECTION_ESTABLISHED
             ois.readObject();
 
             oos.writeObject(ResponseTypes.PRODUCTS_REQUEST);
+            oos.flush();
+
+            oos.writeObject(categoryName);
             oos.flush();
 
             ArrayList<Product> products = (ArrayList<Product>) ois.readObject();
@@ -216,11 +239,11 @@ public class Client {
         else {
             if ( showCategory ) {
                 System.out.print(
-                        " ____________________________________________________________\n" +
-                        "|  Products                             \n" +
-                        "|------------------------------------------------------------\n" +
-                        "| Id      Name                 Category           Price      \n" +
-                        "|------------------------------------------------------------\n"
+                    " ____________________________________________________________\n" +
+                    "|  Products                             \n" +
+                    "|------------------------------------------------------------\n" +
+                    "| Id      Name                 Category           Price      \n" +
+                    "|------------------------------------------------------------\n"
                 );
                 int i = 1;
                 for (Product p : products) {
@@ -250,10 +273,12 @@ public class Client {
 
     }
 
-
+    /**
+     * Prompts a dialog to insert a new product
+     */
     public static void newProduct() {
 
-        // refresh connection
+        // refresh connection - Needed if server reconnected during client session
         connectToCatalog();
 
         BufferedReader input = new BufferedReader( new InputStreamReader( System.in ));
@@ -318,7 +343,7 @@ public class Client {
 
         BufferedReader input = new BufferedReader( new InputStreamReader( System.in ));
 
-        ArrayList<Product> products = clientInfo.getProducts();
+        ArrayList<Product> products = clientInfo.getAllProducts();
 
         // Shows a menu list with all products, their category and prices
         listProducts( products , true );
@@ -341,7 +366,9 @@ public class Client {
 
     }
 
-
+    /**
+     * Lookup the Remote object Catalog
+     */
     private static void connectToCatalog() {
 
         try {
@@ -355,6 +382,13 @@ public class Client {
         }
     }
 
+    /**
+     * Checks if the port that user inserted is available to use.
+     *
+     * @param port
+     * @return
+     *          true if available
+     */
     private static boolean isPortAvailable( int port ) {
         try (Socket ignored = new Socket("localhost", port)) {
             return false;
@@ -420,7 +454,9 @@ public class Client {
         return false;
     }
 
-
+    /**
+     * New user registration
+     */
     private static boolean signup() {
 
         BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
@@ -489,7 +525,7 @@ public class Client {
 
 
     /**
-     * Subscribes to catalog sending a client interface and the email of the client.
+     * Subscribes to catalog sending a client interface, the email and current IP of the client.
      * If already subscribed, then just updates the proxy of the client interface.
      *
      * @return
@@ -505,17 +541,17 @@ public class Client {
 
             return catalog.updateSubscription( clientInfo , clientInfo.getEmail() , getIp() );
 
-        } catch ( SocketException e ) {
-            e.printStackTrace();
-        } catch ( RemoteException e ) {
-            e.printStackTrace();
-        } catch ( AlreadyBoundException e ) {
+        } catch ( Exception e ) {
             System.err.print("Registry port " + config.RMIClientPort + " already in use!");
         }
 
         return ResponseTypes.SUBSCRIPTION_REJECTED;
     }
 
+    /**
+     * Saves ClientInfo(client object) in a file, so next time client can start session by selecting his
+     * object file with all his information.
+     */
     private static void saveClientFile() {
 
         try (

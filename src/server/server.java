@@ -14,7 +14,7 @@ public class server {
 
     public static void main(String [] args) {
 
-        // Sets permission from policy file
+        // Sets permission from policy file set on VM Options
         System.setSecurityManager(new SecurityManager());
 
         try {

@@ -42,7 +42,8 @@ public class Connection extends Thread {
 
                 switch (response) {
 
-                    case PRODUCTS_REQUEST           :   oos.writeObject(clientInfo.getProducts());
+                    case PRODUCTS_REQUEST           :   String categoryName = (String) ois.readObject();
+                                                        oos.writeObject(clientInfo.getProductsByCategoryName(categoryName));
                                                         oos.flush();
                                                         System.out.print("\nAsked for a list of your products.");
                                                         break;

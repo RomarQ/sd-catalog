@@ -8,6 +8,15 @@ import java.util.Enumeration;
 
 public class helper {
 
+    /**
+     * Gets the active interface address
+     *
+     * Needed for some linux distros since some sometimes InetAddress
+     * returns localhost address instead of interface address
+     *
+     * @return
+     * @throws SocketException
+     */
     public static String getIp() throws SocketException {
         Enumeration en = NetworkInterface.getNetworkInterfaces();
         while (en.hasMoreElements()) {
