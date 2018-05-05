@@ -8,8 +8,6 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
-// -Djava.security.policy==src/server/permissions.policy
-
 public class server {
 
     public static void main(String [] args) {

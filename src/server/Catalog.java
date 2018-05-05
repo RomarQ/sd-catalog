@@ -51,7 +51,7 @@ public class Catalog extends UnicastRemoteObject implements CatalogRemote {
 
     // Constructor
     public Catalog() throws RemoteException {
-        super();
+        super(config.RMIServerPort);
     }
 
     /**

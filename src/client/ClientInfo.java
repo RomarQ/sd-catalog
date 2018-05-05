@@ -1,6 +1,7 @@
 package client;
 
 import shared.ClientInterface;
+import shared.config;
 
 import java.io.Serializable;
 import java.net.SocketException;
@@ -22,7 +23,7 @@ public class ClientInfo extends UnicastRemoteObject implements ClientInterface, 
     private String  ip;
 
     public ClientInfo( String email , String phone , int port ) throws RemoteException, SocketException {
-        super();
+        super(config.RMIClientPort);
 
         this.email  = email;
         this.phone  = phone;

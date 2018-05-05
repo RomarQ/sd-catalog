@@ -17,9 +17,6 @@ import static shared.helper.getIp;
 
 public class Client {
 
-    private static String server = config.serverAddress;
-
-
     // RMI
     static Registry         registry;
     static CatalogRemote    catalog;
@@ -237,14 +234,14 @@ public class Client {
             if ( showCategory ) {
                 System.out.print(
                     " ____________________________________________________________\n" +
-                    "|  Products                             \n" +
+                    "|  Products                                                  \n" +
                     "|------------------------------------------------------------\n" +
                     "| Id      Name                 Category           Price      \n" +
                     "|------------------------------------------------------------\n"
                 );
                 int i = 1;
                 for (Product p : products) {
-                    System.out.print("| " + i + "  " + p.getName()  + "  " + p.getCategory() + "  " + p.getPrice() + "€\n");
+                    System.out.print("| " + p.getId() + "  " + p.getName()  + "  " + p.getCategory() + "  " + p.getPrice() + "€\n");
                 }
 
                 System.out.print("|_________________________________________________________\n");
@@ -370,7 +367,7 @@ public class Client {
 
         try {
 
-            registry = LocateRegistry.getRegistry(server);
+            registry = LocateRegistry.getRegistry(config.serverAddress, config.RMIServerPort);
             catalog = (CatalogRemote) registry.lookup("Catalog");
 
         } catch ( Exception e) {
