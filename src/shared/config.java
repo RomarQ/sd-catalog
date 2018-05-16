@@ -6,6 +6,4 @@ public class config {
     public static String serverAddress = "192.168.43.44";
 
     public static int RMIServerPort = 1099;
-    public static int RMIClientPort = 1100;
-
 }
