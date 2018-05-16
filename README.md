@@ -11,7 +11,6 @@ Distributed system that simulates a Product Store via RMI services and client co
 	```java 
 	public static String serverAddress = "192.168.1.78"; // your server address  
 	public static int RMIServerPort = 1099;
-	public static int RMIClientPort = 1100;
 	```
 > **2.** Set **Policy files** for both ( **Server** and **Client** )
 - In [ RUN CONFIGURATIONS ] set the project root as working path and then set the commands  
