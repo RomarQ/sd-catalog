@@ -529,14 +529,9 @@ public class Client {
     private static ResponseTypes subscribeToCatalog() {
 
         try {
-
-            registry = LocateRegistry.createRegistry(config.RMIClientPort);
-            registry.bind("subscription", clientInfo);
-
             return catalog.updateSubscription( clientInfo , clientInfo.getEmail() , getIp() );
-
         } catch ( Exception e ) {
-            System.err.print("Registry port " + config.RMIClientPort + " already in use!");
+            e.printStackTrace();
         }
 
         return ResponseTypes.SUBSCRIPTION_REJECTED;
