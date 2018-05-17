@@ -23,7 +23,7 @@ public class ClientInfo extends UnicastRemoteObject implements ClientInterface, 
     private String  ip;
 
     public ClientInfo( String email , String phone , int port ) throws RemoteException, SocketException {
-        super(config.RMIClientPort);
+        super();
 
         this.email  = email;
         this.phone  = phone;
